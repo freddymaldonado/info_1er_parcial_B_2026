@@ -1,0 +1,9 @@
+[project]
+name = "info-1er-parcial-b-2026"
+version = "0.1.0"
+description = "Infografia UPB I/2026 - 1er parcial B (Paint)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "arcade>=3.3.3",
+]
