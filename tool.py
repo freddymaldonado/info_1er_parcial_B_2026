@@ -1,4 +1,6 @@
 import arcade
+import math
+import random
 from typing import Protocol
 
 
@@ -43,9 +45,22 @@ class MarkerTool(Tool):
     """
     name = "MARKER"
 
-    ### ---------------------- ###
-    ### SU IMPLEMENTACION AQUI ###
-    ### ---------------------- ###
+    def __init__(self, thickness: int = 8):
+        # El marcador usa un grosor mayor que el lapiz normal.
+        self.thickness = thickness
+
+    def draw_traces(self, traces: list[dict]):
+        for trace in traces:
+            if trace["tool"] != self.name:
+                continue
+            if len(trace["trace"]) < 2:
+                continue
+            points = trace["trace"]
+            # Dibujo segmento por segmento porque draw_line permite grosor.
+            for i in range(len(points) - 1):
+                start = points[i]
+                end = points[i + 1]
+                arcade.draw_line(start[0], start[1], end[0], end[1], trace["color"], self.thickness)
 
 
 class SprayTool(Tool):
@@ -62,9 +77,26 @@ class SprayTool(Tool):
     """
     name = "SPRAY"
 
-    ### ---------------------- ###
-    ### SU IMPLEMENTACION AQUI ###
-    ### ---------------------- ###
+    def __init__(self, pixel_count: int = 12, radius: int = 10):
+        # pixel_count controla cuantos puntitos salen por cada punto del trazo.
+        self.pixel_count = pixel_count
+        # radius controla que tan disperso se ve el spray.
+        self.radius = radius
+
+    def draw_traces(self, traces: list[dict]):
+        for trace in traces:
+            if trace["tool"] != self.name:
+                continue
+            for point in trace["trace"]:
+                pixels_drawn = 0
+                # Repito hasta conseguir puntitos que caigan dentro del radio.
+                while pixels_drawn < self.pixel_count:
+                    offset_x = random.uniform(-self.radius, self.radius)
+                    offset_y = random.uniform(-self.radius, self.radius)
+                    distance = math.sqrt(offset_x * offset_x + offset_y * offset_y)
+                    if distance <= self.radius:
+                        arcade.draw_point(point[0] + offset_x, point[1] + offset_y, trace["color"], 2)
+                        pixels_drawn += 1
 
 
 class EraserTool(Tool):
@@ -88,6 +120,30 @@ class EraserTool(Tool):
     """
     name = "ERASER"
 
-    ### ---------------------- ###
-    ### SU IMPLEMENTACION AQUI ###
-    ### ---------------------- ###
+    def __init__(self, radius: int = 18):
+        # Este radio decide que puntos quedan suficientemente cerca para borrar.
+        self.radius = radius
+
+    def draw_traces(self, traces: list[dict]):
+        pass
+
+    def erase(self, traces: list[dict], x: int, y: int):
+        # Armo una nueva lista para conservar solo las partes no borradas.
+        new_traces = []
+        for trace in traces:
+            current_trace = []
+            for point in trace["trace"]:
+                dx = point[0] - x
+                dy = point[1] - y
+                distance = math.sqrt(dx * dx + dy * dy)
+                if distance <= self.radius:
+                    if len(current_trace) > 0:
+                        # Cierro este pedazo para que no se unan lineas por el hueco.
+                        new_traces.append({"tool": trace["tool"], "color": trace["color"], "trace": current_trace})
+                        current_trace = []
+                else:
+                    current_trace.append(point)
+            if len(current_trace) > 0:
+                # Guardo el ultimo pedazo que quedo despues de borrar.
+                new_traces.append({"tool": trace["tool"], "color": trace["color"], "trace": current_trace})
+        return new_traces
